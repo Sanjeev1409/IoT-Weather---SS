@@ -11,7 +11,7 @@
 #include <DHT.h>
 
 // DHT11 sensor pins
-#define DHTPIN 26
+#define DHTPIN 21
 #define DHTTYPE DHT11
 
 // Create aREST instance
@@ -53,12 +53,14 @@ void setup(void)
   rest.variable("location",&location);
     
   // Give name and ID to device
-  rest.set_id("xxx");
-  rest.set_name("alpha-xxx");
+<<<<<<< HEAD:ws-dht11/ws-dht11.ino
+  rest.set_id("209");
+  rest.set_name("alpha-209");
   
   // Connect to WiFi
   WiFi.begin(ssid, password);
-  IPAddress ip(192, 168, 1, xxx); //set static ip
+  IPAddress ip(192, 168, 1, 209); //set static ip
+ 
   IPAddress gateway(192, 168, 1, 1); //set getteway
   Serial.print(F("Setting static ip to : "));
   Serial.println(ip);
