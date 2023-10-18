@@ -1,10 +1,3 @@
-/*
-*  Weather Station App
-*  CGS Semester 2
-*  Task 2
-*  Author: your name here
-*/
-
 #include <math.h>
 #include <WiFi.h>
 #include <aREST.h>
@@ -13,6 +6,9 @@
 // DHT11 sensor pins
 #define DHTPIN 21
 #define DHTTYPE DHT11
+
+// LED pin (D18 on the ESP32)
+#define LED_PIN 18
 
 // Create aREST instance
 aREST rest = aREST();
@@ -24,8 +20,11 @@ DHT dht(DHTPIN, DHTTYPE, 15);
 const char* ssid = "Proxima";
 const char* password = "centauri";
 //Static IP address configuration
-// P connections 
-#define LISTEN_PORT           80
+IPAddress local_IP(192, 168, 1, 231);  // Set the desired IP address
+IPAddress gateway(192, 168, 1, 1);
+IPAddress subnet(255, 255, 255, 0);
+
+#define LISTEN_PORT 80
 
 // Create an instance of the server
 WiFiServer server(LISTEN_PORT);
@@ -35,57 +34,43 @@ float temperature;
 float humidity;
 char* location = "Al Fresco";
 int timer = 72000;
+int ledState = LOW;
 
 // Declare functions to be exposed to the API
 int ledControl(String command);
 
-void setup(void)
-{  
+void setup(void) {
   // Start Serial
   Serial.begin(115200);
-  
-  // Init DHT 
-  dht.begin();
-  
-  // Init variables and expose them to REST API
-  rest.variable("temperature",&temperature);
-  rest.variable("humidity",&humidity);
-  rest.variable("location",&location);
-    
-  // Give name and ID to device
-<<<<<<< HEAD:ws-dht11/ws-dht11.ino
-  rest.set_id("209");
-  rest.set_name("alpha-209");
-  
-  // Connect to WiFi
-  WiFi.begin(ssid, password);
-  IPAddress ip(192, 168, 1, 209); //set static ip
- 
-  IPAddress gateway(192, 168, 1, 1); //set getteway
-  Serial.print(F("Setting static ip to : "));
-  Serial.println(ip);
-  IPAddress subnet(255, 255, 255, 0);//set subnet
-  WiFi.config(ip, gateway, subnet);
 
-  
+  // Connect to WiFi with static IP
+  if (!WiFi.config(local_IP, gateway, subnet)) {
+    Serial.println("STA Failed to configure");
+  }
+
+  // Connect to the WiFi network
+  WiFi.begin(ssid, password);
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
   Serial.println("");
   Serial.println("WiFi connected");
- 
-  // Start the server
-  server.begin();
-  Serial.println("Server started");
-  
-  // Print the IP address
-  Serial.println(WiFi.localIP());
-  
+
+  // Init DHT
+  dht.begin();
+
+  // Init variables and expose them to REST API
+  rest.variable("temperature", &temperature);
+  rest.variable("humidity", &humidity);
+  rest.variable("location", location);
+
+  pinMode(LED_PIN, OUTPUT); // Set LED pin as an output
+  digitalWrite(LED_PIN, ledState); // Initialize LED state
 }
 
 void loop() {
-  
   // Reading temperature and humidity
   temperature = dht.readTemperature();
   humidity = dht.readHumidity();
@@ -95,36 +80,34 @@ void loop() {
   Serial.println(temperature);
   Serial.print("Humidity: ");
   Serial.println(humidity);
-  Serial.print("Timer: ");
-  Serial.println(timer);
-  delay(5000);
-  timer--;
 
-  //Check running time and reset if expired
-  if (timer == 0 ) {
-    delay(3000);
-    Serial.println("Resetting..");
-    ESP.restart();
+  if (!isnan(temperature) && !isnan(humidity)) {
+    // The data retrieval was successful
+    // Turn on the LED
+    digitalWrite(LED_PIN, LOW); // Turn on the LED
+    delay(1000); // Keep the LED on for 1 second
+    digitalWrite(LED_PIN, HIGH); // Turn off the LED
   }
-  
+
   // Handle REST calls
   WiFiClient client = server.available();
   if (!client) {
     return;
   }
-  while(!client.available()){
+  while (!client.available()) {
     delay(1);
   }
   rest.handle(client);
-  //Serial.println("called");
 }
 
-// Custom function accessible by the API
+// Custom function accessible by the API to control the LED
 int ledControl(String command) {
-
-  // Get state from command
-  int state = command.toInt();
-
-  digitalWrite(6,state);
-  return 1;
+  if (command == "ON") {
+    ledState = HIGH; // Turn on LED
+    digitalWrite(LED_PIN, ledState);
+  } else if (command == "OFF") {
+    ledState = LOW; // Turn off LED
+    digitalWrite(LED_PIN, ledState);
+  }
+  return ledState;
 }
